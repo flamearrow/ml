@@ -135,7 +135,7 @@ def train_model_and_save_ckpt(save_weights_callback=False, seq_model=True):
             callbacks=callbacks)
     else:
         model.fit(
-            x_train_converted,
+            y_train,
             x_test_converted,
             epochs=5,
             # need validation_data during fit in order for the checkpoint to decide 'best' one
