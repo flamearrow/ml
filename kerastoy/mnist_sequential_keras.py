@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import os
 import matplotlib.pyplot as plt
+import callback_utils
 
 # ckpt names with epoch number concatenated
 seq_checkpoint_callback_path = 'mnist_keras/seq-{epoch:04d}.ckpt'
@@ -65,18 +66,6 @@ def create_cnn_model():
     return model
 
 
-def create_tensorboard_callback(log_root):
-    log_dir = log_root + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    return tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-
-
-def create_checkpoint_callback(ckpt_path):
-    return tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path,
-                                              save_weights_only=True,
-                                              save_best_only=True,
-                                              verbose=1)
-
-
 def get_datas():
     mnist = tf.keras.datasets.mnist
 
@@ -119,11 +108,12 @@ def train_model_and_save_ckpt(save_weights_callback=False, seq_model=True):
     # train conv2d
     # model.fit(x_train_converted, y_train, epochs=5, callbacks=[create_tensorboard_callback('logs/fit')])
 
-    callbacks = [create_tensorboard_callback(tensorboard_path)]
+    callbacks = [callback_utils.create_tensorboard_callback(tensorboard_path)]
 
     if save_weights_callback:
         callbacks.append(
-            create_checkpoint_callback(seq_checkpoint_callback_path if seq_model else cnn_checkpoint_callback_path))
+            callback_utils.create_checkpoint_callback(
+                seq_checkpoint_callback_path if seq_model else cnn_checkpoint_callback_path))
 
     if seq_model:
         model.fit(
@@ -155,8 +145,6 @@ def train_model_and_save_savedmodel(seq_model=True):
 
     # train conv2d
     # model.fit(x_train_converted, y_train, epochs=5, callbacks=[create_tensorboard_callback('logs/fit')])
-
-    callbacks = [create_tensorboard_callback(tensorboard_path)]
 
     if seq_model:
         model.fit(
