@@ -124,7 +124,7 @@ def train_mobilenetv2_on_cifar100(fine_tune=False):
         train_optimizer = create_rmsprop_optimizer(fine_tune=fine_tune)
     else:
         model = createMobilenetV2ForCifar100(image_shape)
-        train_optimizer = create_rmsprop_optimizer()
+        train_optimizer = create_rmsprop_optimizer(fine_tune=fine_tune)
 
     model.compile(optimizer=train_optimizer,
                   loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
