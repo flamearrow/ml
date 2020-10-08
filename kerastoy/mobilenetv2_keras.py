@@ -5,7 +5,8 @@ import plt_utils
 
 tensorboard_path = 'logs/cifar100_mobilnetv2_keras'
 seq_checkpoint_callback_path = 'cifar100_keras/imagenet-{epoch:04d}.ckpt'
-image_shape = (32, 32, 3)
+image_resize = (160, 160)
+image_shape = image_resize + (3,)
 
 
 # create a model with a single dense layer attached at bottom of mobilenetv2, unfreeze mobilenetv2 layers if set
@@ -15,7 +16,7 @@ def createMobilenetV2ForCifar100(image_shape, fine_tune_layer_starts=-1):
     # therefore we want to freeze the lower levels, which learns about generic image features
     if fine_tune_layer_starts >= 0:
         base_model.trainable = True
-        for layer in base_model[:fine_tune_layer_starts]:
+        for layer in base_model.layers[:fine_tune_layer_starts]:
             layer.trainable = False
     else:
         base_model.trainable = False
@@ -25,6 +26,9 @@ def createMobilenetV2ForCifar100(image_shape, fine_tune_layer_starts=-1):
     # we'll need to convert this layer to a 100 dense output
     # it's tensorflow convention to just call the snake tensor x
     # pooling - convert (x, x, 1280) to (1280) by taking average value on (x, x)
+    # for image_size=(30, 30), x = 1
+    # for image_size=(160, 160), x = 5
+    # we want a slightly bigger number for better results, therefore the images are resized
     global_avg_pool_layer = keras.layers.GlobalAveragePooling2D()
     # add a single 100 length Dense layer as output, no activation, use logits directly
     # Note: 100 here would need to match the total number of possible labels in the models label data
@@ -93,10 +97,13 @@ def load_cifar100_data():
     train_dataset.prefetch(buffer_size=AUTOTUNE)
     test_dataset.prefetch(buffer_size=AUTOTUNE)
 
-    return train_dataset, test_dataset
+    # resize the image from (30, 30) to (160, 160) to make mobilenetv2's upper levels wider
+    return train_dataset.map(lambda x, y: (tf.image.resize(x, image_resize), y)), test_dataset.map(
+        lambda x, y: (tf.image.resize(x, image_resize), y))
 
 
 def create_rmsprop_optimizer(fine_tune=True):
+    # if fine_tune, use a smaller rate
     if fine_tune:
         # if fine_tune, use a smaller rate
         decay_schedule = keras.optimizers.schedules.ExponentialDecay(
@@ -121,12 +128,10 @@ def train_mobilenetv2_on_cifar100(fine_tune=False):
     if fine_tune:
         model = createMobilenetV2ForCifar100(image_shape,
                                              fine_tune_layer_starts=100)
-        train_optimizer = create_rmsprop_optimizer(fine_tune=fine_tune)
     else:
         model = createMobilenetV2ForCifar100(image_shape)
-        train_optimizer = create_rmsprop_optimizer(fine_tune=fine_tune)
 
-    model.compile(optimizer=train_optimizer,
+    model.compile(optimizer=create_rmsprop_optimizer(fine_tune=fine_tune),
                   loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   metrics='accuracy')
 
