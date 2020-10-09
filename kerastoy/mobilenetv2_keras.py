@@ -1,17 +1,20 @@
-import tensorflow as tf
 import callback_utils
+import tensorflow as tf
 import tensorflow.keras as keras
-import plt_utils
+import argparse
 
-tensorboard_path = 'logs/cifar100_mobilnetv2_keras'
-seq_checkpoint_callback_path = 'cifar100_keras/imagenet-{epoch:04d}.ckpt'
+tensorboard_path_exp = 'tensorboard_logs/cifar100_mobilnetv2_keras_exp'
+tensorboard_path_cos = 'tensorboard_logs/cifar100_mobilnetv2_keras_cos'
+exp_checkpoint_callback_path = 'checkpoints/cifar100_keras_exp/imagenet-{epoch:04d}.ckpt'
+cos_checkpoint_callback_path = 'checkpoints/cifar100_keras_cos/imagenet-{epoch:04d}.ckpt'
+
 image_resize = (160, 160)
 image_shape = image_resize + (3,)
 
 
 # create a model with a single dense layer attached at bottom of mobilenetv2, unfreeze mobilenetv2 layers if set
-def createMobilenetV2ForCifar100(image_shape, fine_tune_layer_starts=-1):
-    base_model = keras.applications.MobileNetV2(input_shape=image_shape, include_top=False, weights='imagenet')
+def create_mobilenet_v2_for_cifar100(input_image_shape, fine_tune_layer_starts=-1):
+    base_model = keras.applications.MobileNetV2(input_shape=input_image_shape, include_top=False, weights='imagenet')
     # Note: the higher the layer is, the more specific it is to the original training data
     # therefore we want to freeze the lower levels, which learns about generic image features
     if fine_tune_layer_starts >= 0:
@@ -34,30 +37,13 @@ def createMobilenetV2ForCifar100(image_shape, fine_tune_layer_starts=-1):
     # Note: 100 here would need to match the total number of possible labels in the models label data
     # if we're doing a binary classification, this number should be 1
     prediction_layer = keras.layers.Dense(100)
-    inputs = keras.Input(shape=image_shape)
+    inputs = keras.Input(shape=input_image_shape)
     x = preprocess_inputs(inputs)
     x = base_model(x, training=False)
     x = global_avg_pool_layer(x)
     x = keras.layers.Dropout(0.2)(x)
     outputs = prediction_layer(x)
     return keras.Model(inputs=inputs, outputs=outputs)
-
-
-# This doesn't seem to wark
-# class MobileNetV2ForCifar100(keras.Model):
-#     def __init__(self):
-#         super(MobileNetV2ForCifar100, self).__init__()
-#         # cifar100 is 32 by 32 by 3
-#         self.base_model = keras.applications.MobileNetV2(input_shape=(32, 32, 3), include_top=False)
-#         self.pool_layer = keras.layers.GlobalAveragePooling2D()
-#         self.logits_layer = keras.layers.Dense(100)
-#
-#     def call(self, inputs, training=None, mask=None):
-#         self.base_model(inputs)
-#         x = self.base_model.output
-#         x = self.pool_layer(x)
-#         x = self.logits_layer(x)
-#         return x
 
 
 # flip, rotate andd set scale from (0-255) to (-1, 1) for input images
@@ -102,36 +88,35 @@ def load_cifar100_data():
         lambda x, y: (tf.image.resize(x, image_resize), y))
 
 
-def create_rmsprop_optimizer(fine_tune=True):
-    # if fine_tune, use a smaller rate
-    if fine_tune:
-        # if fine_tune, use a smaller rate
-        decay_schedule = keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.005,
-            decay_steps=5000,
-            decay_rate=0.7
-        )
-    else:
+def create_rmsprop_optimizer(use_cosine_decay=False):
+    if use_cosine_decay:
         # if start from scratch, use a more aggressive rate
         decay_schedule = keras.experimental.CosineDecayRestarts(
             initial_learning_rate=0.025,
             first_decay_steps=5000,
             alpha=0.001
         )
+    else:
+        # if fine_tune, use a smaller rate
+        decay_schedule = keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=0.005,
+            decay_steps=5000,
+            decay_rate=0.7
+        )
     return keras.optimizers.RMSprop(learning_rate=decay_schedule, momentum=0.9, epsilon=1.0)
 
 
-def train_mobilenetv2_on_cifar100(fine_tune=False):
+def train_mobilenetv2_on_cifar100(fine_tune=False, use_cosine_decay=False):
     # train mobilenetv2 with a simple dense layer for cifar100 data
     # freeze the entire mobilev2 model, only train the last layer
     train_dataset, test_dataset = load_cifar100_data()
     if fine_tune:
-        model = createMobilenetV2ForCifar100(image_shape,
-                                             fine_tune_layer_starts=100)
+        model = create_mobilenet_v2_for_cifar100(image_shape,
+                                                 fine_tune_layer_starts=100)
     else:
-        model = createMobilenetV2ForCifar100(image_shape)
+        model = create_mobilenet_v2_for_cifar100(image_shape)
 
-    model.compile(optimizer=create_rmsprop_optimizer(fine_tune=fine_tune),
+    model.compile(optimizer=create_rmsprop_optimizer(use_cosine_decay=use_cosine_decay),
                   loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   metrics='accuracy')
 
@@ -156,12 +141,23 @@ def train_mobilenetv2_on_cifar100(fine_tune=False):
     model.fit(train_dataset,
               epochs=1000,
               validation_data=test_dataset,
-              callbacks=[callback_utils.create_tensorboard_callback(tensorboard_path),
-                         callback_utils.create_checkpoint_callback(seq_checkpoint_callback_path)])
+              callbacks=[callback_utils.create_tensorboard_callback(
+                  tensorboard_path_cos if use_cosine_decay else tensorboard_path_exp),
+                         callback_utils.create_checkpoint_callback(
+                             cos_checkpoint_callback_path if use_cosine_decay else exp_checkpoint_callback_path)])
 
 
 def main():
-    train_mobilenetv2_on_cifar100()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-decay", default='exponential')
+    args = parser.parse_args()
+
+    if args.decay == 'exponential':
+        print('Training with using exponential decay')
+        train_mobilenetv2_on_cifar100()
+    else:
+        print('Training with using cosine decay')
+        train_mobilenetv2_on_cifar100(use_cosine_decay=True)
 
 
 if __name__ == "__main__":
