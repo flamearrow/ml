@@ -4,9 +4,13 @@ import tensorflow.keras as keras
 import argparse
 
 tensorboard_path_exp = 'tensorboard_logs/cifar100_mobilnetv2_keras_exp'
+tensorboard_path_exp_ft = 'tensorboard_logs/cifar100_mobilnetv2_keras_exp_ft'
 tensorboard_path_cos = 'tensorboard_logs/cifar100_mobilnetv2_keras_cos'
+tensorboard_path_cos_ft = 'tensorboard_logs/cifar100_mobilnetv2_keras_cos_ft'
 exp_checkpoint_callback_path = 'checkpoints/cifar100_keras_exp/imagenet-{epoch:04d}.ckpt'
-cos_checkpoint_callback_path = 'checkpoints/cifar100_keras_cos/imagenet-{epoch:04d}.ckpt'
+exp_ft_checkpoint_callback_path = 'checkpoints/cifar100_keras_exp_ft/imagenet-{epoch:04d}.ckpt'
+cos_checkpoint_callback_path = 'checkpoints/cifar100_keras_cos_ft/imagenet-{epoch:04d}.ckpt'
+cos_ft_checkpoint_callback_path = 'checkpoints/cifar100_keras_cos_ft/imagenet-{epoch:04d}.ckpt'
 
 image_resize = (160, 160)
 image_shape = image_resize + (3,)
@@ -107,8 +111,18 @@ def create_rmsprop_optimizer(use_cosine_decay=False):
 
 
 def train_mobilenetv2_on_cifar100(fine_tune=False, use_cosine_decay=False):
-    # train mobilenetv2 with a simple dense layer for cifar100 data
-    # freeze the entire mobilev2 model, only train the last layer
+    print("fine_tune: {}, decay: {}".format(fine_tune, "cosine" if use_cosine_decay else "exponential"))
+    if use_cosine_decay:
+        tensorboard_path = tensorboard_path_cos_ft if fine_tune else tensorboard_path_cos
+        ckpt_path = cos_ft_checkpoint_callback_path if fine_tune else cos_checkpoint_callback_path
+    else:
+        tensorboard_path = tensorboard_path_exp_ft if fine_tune else tensorboard_path_exp
+        ckpt_path = exp_ft_checkpoint_callback_path if fine_tune else exp_checkpoint_callback_path
+
+    print("tbpath: {}, ckptpath: {}".format(tensorboard_path, ckpt_path))
+
+    # freeze the entire mobilev2 model, only train the last layer when ft is false
+    # otherwise only freeze the first 100 layers of original model(out of 160+ layers)
     train_dataset, test_dataset = load_cifar100_data()
     if fine_tune:
         model = create_mobilenet_v2_for_cifar100(image_shape,
@@ -121,43 +135,34 @@ def train_mobilenetv2_on_cifar100(fine_tune=False, use_cosine_decay=False):
                   metrics='accuracy')
 
     # model.summary()
-
     # the two trainable variables are the weights and biases for the trainable dense layer
     # for v in model.trainable_variables:
     #     print(v)
-
     # x_batch, y_batch = next(iter(test_dataset))
     # output = model(x_batch)
     # print(output)
-
-    loss0, accuracy0 = model.evaluate(test_dataset)
-    print("initial loss: {:.2f}".format(loss0))
-    print("initial accuracy: {:.2f}".format(accuracy0))
+    # loss0, accuracy0 = model.evaluate(test_dataset)
+    # print("initial loss: {:.2f}".format(loss0))
+    # print("initial accuracy: {:.2f}".format(accuracy0))
 
     # if dataset is set, the 2nd param can't be set
-    # this is going to suck as
-    # a) there are 100 categories compared to cat/dog category
-    # b) we only added one dense layer and froze the entire mobilenet, there's not too much to play around
     model.fit(train_dataset,
               epochs=1000,
               validation_data=test_dataset,
-              callbacks=[callback_utils.create_tensorboard_callback(
-                  tensorboard_path_cos if use_cosine_decay else tensorboard_path_exp),
-                         callback_utils.create_checkpoint_callback(
-                             cos_checkpoint_callback_path if use_cosine_decay else exp_checkpoint_callback_path)])
+              callbacks=[callback_utils.create_tensorboard_callback(tensorboard_path),
+                         callback_utils.create_checkpoint_callback(ckpt_path)])
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-decay", default='exponential')
+    parser.add_argument("-decay", default='cosine')
+    parser.add_argument("-fine_tune", default='false')
     args = parser.parse_args()
 
-    if args.decay == 'exponential':
-        print('Training with using exponential decay')
-        train_mobilenetv2_on_cifar100()
-    else:
-        print('Training with using cosine decay')
-        train_mobilenetv2_on_cifar100(use_cosine_decay=True)
+    ft = True if args.fine_tune == 'true' else False
+    cos = True if args.decay == 'cosine' else False
+
+    train_mobilenetv2_on_cifar100(fine_tune=ft, use_cosine_decay=cos)
 
 
 if __name__ == "__main__":
