@@ -1,4 +1,5 @@
 import callback_utils
+import optimizer_utils
 import tensorflow as tf
 import tensorflow.keras as keras
 import argparse
@@ -88,24 +89,6 @@ def load_cifar100_data():
         lambda x, y: (tf.image.resize(x, image_resize), y))
 
 
-def create_rmsprop_optimizer(use_cosine_decay=False):
-    if use_cosine_decay:
-        # if start from scratch, use a more aggressive rate
-        decay_schedule = keras.experimental.CosineDecayRestarts(
-            initial_learning_rate=0.025,
-            first_decay_steps=5000,
-            alpha=0.001
-        )
-    else:
-        # if fine_tune, use a smaller rate
-        decay_schedule = keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.005,
-            decay_steps=5000,
-            decay_rate=0.7
-        )
-    return keras.optimizers.RMSprop(learning_rate=decay_schedule, momentum=0.9, epsilon=1.0)
-
-
 def train_mobilenetv2_on_cifar100(fine_tune=False, use_cosine_decay=False):
     # train mobilenetv2 with a simple dense layer for cifar100 data
     # freeze the entire mobilev2 model, only train the last layer
@@ -116,7 +99,7 @@ def train_mobilenetv2_on_cifar100(fine_tune=False, use_cosine_decay=False):
     else:
         model = create_mobilenet_v2_for_cifar100(image_shape)
 
-    model.compile(optimizer=create_rmsprop_optimizer(use_cosine_decay=use_cosine_decay),
+    model.compile(optimizer=optimizer_utils.create_rmsprop_optimizer(use_cosine_decay=use_cosine_decay),
                   loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   metrics='accuracy')
 
@@ -143,8 +126,8 @@ def train_mobilenetv2_on_cifar100(fine_tune=False, use_cosine_decay=False):
               validation_data=test_dataset,
               callbacks=[callback_utils.create_tensorboard_callback(
                   tensorboard_path_cos if use_cosine_decay else tensorboard_path_exp),
-                         callback_utils.create_checkpoint_callback(
-                             cos_checkpoint_callback_path if use_cosine_decay else exp_checkpoint_callback_path)])
+                  callback_utils.create_checkpoint_callback(
+                      cos_checkpoint_callback_path if use_cosine_decay else exp_checkpoint_callback_path)])
 
 
 def main():
