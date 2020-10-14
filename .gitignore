@@ -3,3 +3,4 @@
 /kerastoy/venv
 /kerastoy/.idea
 /kerastoy/logs
+/kerastoy/__pycache__
