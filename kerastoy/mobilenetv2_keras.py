@@ -52,7 +52,6 @@ def create_mobilenet_v2_for_cifar100(input_image_shape, fine_tune_layer_starts=-
         # Note: 100 here would need to match the total number of possible labels in the models label data
         # if we're doing a binary classification, this number should be 1
         inputs = keras.Input(shape=input_image_shape)
-        # x = preprocess_inputs(inputs)
         x = resize_and_rescale()(inputs)
         x = data_augmentation()(x)
         x = base_model(x)
@@ -68,17 +67,6 @@ def create_mobilenet_v2_for_cifar100(input_image_shape, fine_tune_layer_starts=-
             keras.layers.Dropout(0.2),
             keras.layers.Dense(100),
         ])
-
-
-# flip, rotate andd set scale from (0-255) to (0, 1) for input images
-# then introduce some randomness
-def preprocess_inputs(input_layer):
-    return keras.Sequential([
-        keras.layers.experimental.preprocessing.RandomFlip('horizontal'),
-        keras.layers.experimental.preprocessing.RandomRotation(0.2),
-        keras.layers.experimental.preprocessing.Rescaling(1. / 255)
-    ])(input_layer)
-    # return resize_and_rescale()(data_augmentation()(input_layer))
 
 
 def data_augmentation():
