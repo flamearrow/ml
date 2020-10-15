@@ -1,7 +1,7 @@
 .DS_Store
-/kerastoy/env
-/kerastoy/venv
-/kerastoy/.idea
-/kerastoy/logs
-/kerastoy/tensorboard_logs
-/kerastoy/checkpoints
+kerastoy/env
+kerastoy/venv
+kerastoy/.idea
+kerastoy/logs
+kerastoy/tensorboard_logs
+kerastoy/checkpoints
