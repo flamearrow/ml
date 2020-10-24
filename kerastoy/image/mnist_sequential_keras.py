@@ -17,7 +17,7 @@ tensorboard_path = 'logs/mnist_keras'
 
 # add .h5 to save to hdf5 format seq_savedmodel_path = 'mnist_keras/seq_model.h5'
 
-seq_savedmodel_path = 'mnist_keras/seq_model'
+seq_savedmodel_path = '../mnist_keras/seq_model'
 cnn_savedmodel_path = 'mnist_keras/cnn_model'
 
 

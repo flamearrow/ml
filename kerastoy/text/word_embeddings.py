@@ -10,7 +10,7 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 vocab_size = 1000
 embedding_dimension = 16
 sequence_length = 100
-tensorboard_path = 'tensorboard_logs/moviereview_word_embeddings'
+tensorboard_path = '../tensorboard_logs/moviereview_word_embeddings'
 
 vectors_file_name = 'vecs.tsv'
 metadata_file_name = 'meta.tsv'
