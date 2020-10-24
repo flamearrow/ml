@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 import tensorflow_datasets as tfds
 import callback_utils
+import numpy as np
 
 BUFFER_SIZE = 10000
 BATCH_SIZE = 64
@@ -79,11 +80,36 @@ def train_model():
     # tf.keras.utils.plot_model(model, to_file='tc_lstm.png', show_shapes=True)
     model.fit(train_ds, epochs=10, validation_data=test_ds, validation_steps=30,
               callbacks=[callback_utils.create_tensorboard_callback(tensorboard_path)])
-    model.save(model_path)
+
+
+def load_saved_model_and_infer():
+    model = tf.keras.models.load_model(model_path)
+    model.summary()
+
+    _, _, encoder = get_data()
+
+    def sample_predict(predict_text, padding=True):
+        encoded_text_vector = encoder.encode(predict_text)
+        if padding:
+            encoded_text_vector = pad_to_size(encoded_text_vector, EMBEDDING_DIMENSION)
+        encoded_text_vector = tf.cast(encoded_text_vector, tf.float32)
+        return model.predict(tf.expand_dims(encoded_text_vector, 0))
+
+    sample_positive_predit_text = ('The movie was cool. The animation and the graphics '
+                                   'were out of this world. I would recommend this movie. ')
+
+    sample_positive_predit_text = ('The movie was not good. The animation and the graphics '
+                                   'were terrible. I would not recommend this movie. ')
+    predictions_logits = sample_predict(sample_positive_predit_text)
+    # print(predictions)
+    # note for binary output, use tf.nn.sigmoid, for multi class, use tf.nn.softmax
+    predictions = tf.nn.sigmoid(predictions_logits)
+    tf.print(predictions)
 
 
 def main():
-    train_model()
+    # train_model()
+    load_saved_model_and_infer()
 
 
 if __name__ == "__main__":
