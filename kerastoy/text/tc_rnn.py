@@ -53,13 +53,14 @@ def pad_to_size(vec, size):
     return vec
 
 
-def create_model(ds_encoder):
+# when RNN layers doesn't return state, they just have 1 output tensor, can stack with sequential model
+def create_sequential_model(ds_encoder):
     model = tf.keras.Sequential([
         layers.Embedding(ds_encoder.vocab_size, EMBEDDING_DIMENSION),
         # LSTM has (batch, word_count, embedding_dimension] as input and [batch, units] as output
         # using units = 64 here
-        # Note LSTM can be configured to output both cell states and hidden states too,
-        # this way it can be connected to another LSTM layer
+        # Note LSTM can return the output of each internal block by setting return_sequences=True
+        # now it would return [batch, timesteps(word count), units] and can be connected to another LSTM layer
         layers.Bidirectional(layers.LSTM(64, return_sequences=True)),
         layers.Bidirectional(layers.LSTM(32)),
         layers.Dense(64, activation='relu'),
@@ -73,16 +74,41 @@ def create_model(ds_encoder):
     return model
 
 
-def train_model():
+# when RNN layers returns state, they'll return multiple tensors, use functional API to create a model
+# create a seq2seq model with encoder and decoders
+def create_functional_model(ds_encoder):
+    encoder_vocab = 1000
+    decoder_vocab = 2000
+
+    encoder_input = layers.Input(shape=(None,))
+    encoder_embedded = layers.Embedding(encoder_vocab, EMBEDDING_DIMENSION)(encoder_input)
+
+    # return state would make the layer return 3 tensors
+    output, state_hidden, state_cell = layers.LSTM(64, return_state=True, name='encoder')(encoder_embedded)
+
+    encoder_state = [state_hidden, state_cell]
+
+    decoder_input = layers.Input(shape=(None,))
+    decoder_embedded = layers.Embedding(decoder_vocab, EMBEDDING_DIMENSION)(decoder_input)
+    decoder_lstm = layers.LSTM(64, name='decoder')(decoder_embedded, initial_state=encoder_state)
+
+    output = layers.Dense(10)(decoder_lstm)
+
+    model = tf.keras.Model(inputs=[encoder_input, decoder_input], outputs=output)
+
+    return model
+
+
+def train_model(sequential=True):
     train_ds, test_ds, ds_encoder = get_data()
-    model = create_model(ds_encoder)
-    # model.summary()
-    # tf.keras.utils.plot_model(model, to_file='tc_lstm.png', show_shapes=True)
-    model.fit(train_ds, epochs=10, validation_data=test_ds, validation_steps=30,
-              callbacks=[callback_utils.create_tensorboard_callback(tensorboard_path)])
+    model = create_sequential_model(ds_encoder) if sequential else create_functional_model(ds_encoder)
+    model.summary()
+    tf.keras.utils.plot_model(model, to_file='tc_lstm_functional.png', show_shapes=True)
+    # model.fit(train_ds, epochs=10, validation_data=test_ds, validation_steps=30,
+    #           callbacks=[callback_utils.create_tensorboard_callback(tensorboard_path)])
 
 
-def load_saved_model_and_infer():
+def load_saved_sequential_model_and_infer():
     model = tf.keras.models.load_model(model_path)
     model.summary()
 
@@ -109,7 +135,7 @@ def load_saved_model_and_infer():
 
 def main():
     # train_model()
-    load_saved_model_and_infer()
+    load_saved_sequential_model_and_infer()
 
 
 if __name__ == "__main__":
