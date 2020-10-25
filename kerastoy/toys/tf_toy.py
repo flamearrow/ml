@@ -1,5 +1,7 @@
 import argparse
 import tensorflow as tf
+
+
 # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 #
 # tf.debugging.set_log_device_placement(True)
@@ -19,8 +21,14 @@ def test_argparse():
         print(args.blah)
 
 
-def main():
+def tensor_toy():
     print(tf.random.normal([32, 10, 8]))
+    a = tf.constant([[1, 2], [3, 4]])
+    print(a)
+
+
+def main():
+    tensor_toy()
 
 
 if __name__ == "__main__":
