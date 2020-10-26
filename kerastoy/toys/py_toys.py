@@ -7,10 +7,13 @@ class WithToy(object):
 
 
 def main():
-    with WithToy() as toy:
-        print("doStuff")
+    # with WithToy() as toy:
+    #     print("doStuff")
+    #
+    # print("doStuffAfterWithBlock")
 
-    print("doStuffAfterWithBlock")
+    for i in range(1, 10):
+        print(i)
 
 
 if __name__ == "__main__":
