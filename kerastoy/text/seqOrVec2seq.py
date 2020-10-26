@@ -9,6 +9,10 @@ import time
 BATCH_SIZE = 64
 ckpt_path = 'checkpoints/text/encoder_decoder_translate'
 
+
+# Demonstrate a Seq2Seq model for translation (Encoder, BahdanauAttention, Decoder)
+# and a Vec2Seq model for image captioning (CNN_Encoder, CNN_BahdanauAttention, Decoder)
+
 # reutrns two list of eng and spa words
 def get_data(num_examples=100):
     path_to_zip = tf.keras.utils.get_file(
@@ -149,6 +153,58 @@ class BahdanauAttention(tf.keras.layers.Layer):
 
         # context_vector shape after sum == (batch_size, hidden_size)
         context_vector = attention_weights * encoder_output
+        context_vector = tf.reduce_sum(context_vector, axis=1)
+
+        return context_vector, attention_weights
+
+
+# As long as the attention layer can process tne encoder and outputs a convex_vector, it could be connected to Decoder
+# e.g the following CNNEncoder and CNNBahdanauAttention takes the features extracted from image model(e.g the last layer
+# of InceptV3) and creates a context_vector, (CNNEncoder + CNNBahdanauAttention + Decoder) could make an image caption
+# model to generate captions on images.
+class CNN_Encoder(tf.keras.Model):
+    # Since you have already extracted the features and dumped it using pickle
+    # This encoder passes those features through a Fully connected layer
+    def __init__(self, embedding_dim):
+        super(CNN_Encoder, self).__init__()
+        # shape after fc == (batch_size, 64, embedding_dim)
+        self.fc = tf.keras.layers.Dense(embedding_dim)
+
+    def call(self, x):
+        # x is the last layer output of another image model
+        # which converts images into a vector
+        x = self.fc(x)
+        x = tf.nn.relu(x)
+        return x
+
+
+class CNN_BahdanauAttention(tf.keras.Model):
+    def __init__(self, units):
+        super(BahdanauAttention, self).__init__()
+        self.W1 = tf.keras.layers.Dense(units)
+        self.W2 = tf.keras.layers.Dense(units)
+        self.V = tf.keras.layers.Dense(1)
+
+    def call(self, features, hidden):
+        # features(CNN_encoder output) shape == (batch_size, 64, embedding_dim)
+
+        # hidden shape == (batch_size, hidden_size)
+        # hidden_with_time_axis shape == (batch_size, 1, hidden_size)
+        hidden_with_time_axis = tf.expand_dims(hidden, 1)
+
+        # attention_hidden_layer shape == (batch_size, 64, units)
+        attention_hidden_layer = (tf.nn.tanh(self.W1(features) +
+                                             self.W2(hidden_with_time_axis)))
+
+        # score shape == (batch_size, 64, 1)
+        # This gives you an unnormalized score for each image feature.
+        score = self.V(attention_hidden_layer)
+
+        # attention_weights shape == (batch_size, 64, 1)
+        attention_weights = tf.nn.softmax(score, axis=1)
+
+        # context_vector shape after sum == (batch_size, hidden_size)
+        context_vector = attention_weights * features
         context_vector = tf.reduce_sum(context_vector, axis=1)
 
         return context_vector, attention_weights
