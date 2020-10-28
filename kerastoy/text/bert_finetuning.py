@@ -174,7 +174,7 @@ def train_model():
     glue_train, glue_train_labels, glue_validation, glue_validation_labels, glue_test, glue_test_labels = get_data()
     bert_classifier, bert_encoder = get_model()
 
-    epochs = 3
+    epochs = 12
     batch_size = 32
     eval_batch_size = 32
 
