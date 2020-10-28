@@ -21,6 +21,7 @@ tensorboard_path = 'logs/bert_classifier_glue_mrpc'
 model_path = 'models/text/bert_classifier_glue_mrpc'
 
 # has checkpoint and vocab
+# gs is not implemented on windows, download the files and save them locally
 gs_folder_bert = "gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-12_H-768_A-12"
 hub_model_name = "bert_en_uncased_L-12_H-768_A-12"
 hub_url_bert = "https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/2"
@@ -77,7 +78,7 @@ def bert_encode(glue_dict, tokenizer):
 
 def get_tokenizer():
     return bert.tokenization.FullTokenizer(
-        vocab_file=os.path.join(gs_folder_bert, "vocab.txt"),
+        vocab_file=os.path.join("bert_vocab.txt"),
         do_lower_case=True)
 
 
@@ -128,19 +129,19 @@ def get_data():
 
 
 def get_model():
-    bert_config_file = os.path.join(gs_folder_bert, "bert_config.json")
-    config_dict = json.loads(tf.io.gfile.GFile(bert_config_file).read())
-    # {'attention_probs_dropout_prob': 0.1,
-    #  'hidden_act': 'gelu',
-    #  'hidden_dropout_prob': 0.1,
-    #  'hidden_size': 768,
-    #  'initializer_range': 0.02,
-    #  'intermediate_size': 3072,
-    #  'max_position_embeddings': 512,
-    #  'num_attention_heads': 12,
-    #  'num_hidden_layers': 12,
-    #  'type_vocab_size': 2,
-    #  'vocab_size': 30522}
+    # bert_config_file = os.path.join(gs_folder_bert, "bert_config.json")
+    # config_dict = json.loads(tf.io.gfile.GFile(bert_config_file).read())
+    config_dict = {'attention_probs_dropout_prob': 0.1,
+                   'hidden_act': 'gelu',
+                   'hidden_dropout_prob': 0.1,
+                   'hidden_size': 768,
+                   'initializer_range': 0.02,
+                   'intermediate_size': 3072,
+                   'max_position_embeddings': 512,
+                   'num_attention_heads': 12,
+                   'num_hidden_layers': 12,
+                   'type_vocab_size': 2,
+                   'vocab_size': 30522}
 
     bert_config = bert.configs.BertConfig.from_dict(config_dict)
     ###### create model from gs_folder_bert
