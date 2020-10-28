@@ -18,7 +18,7 @@ VAL_SUBSPLITS = 5
 
 checkpoint_callback_path = 'unet/{epoch:04d}.ckpt'
 tensorboard_path = 'logs/unet'
-saved_model_path = 'models/unet'
+saved_model_path = 'model/unet'
 
 
 # image: 3 channels, mask: 1 channel
