@@ -8,4 +8,5 @@ kerastoy/unet
 kerastoy/tensorboard_logs
 kerastoy/checkpoints
 kerastoy/__pycache__
+kerastoy/text/logs
 .idea
