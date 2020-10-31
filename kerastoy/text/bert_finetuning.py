@@ -18,7 +18,7 @@ import json
 import callback_utils
 
 tensorboard_path = 'logs/bert_classifier_glue_mrpc'
-model_path = 'models/text/bert_classifier_glue_mrpc'
+model_path = 'model/text/bert_classifier_glue_mrpc'
 
 # has checkpoint and vocab
 # gs is not implemented on windows, download the files and save them locally
@@ -174,7 +174,7 @@ def train_model():
     glue_train, glue_train_labels, glue_validation, glue_validation_labels, glue_test, glue_test_labels = get_data()
     bert_classifier, bert_encoder = get_model()
 
-    epochs = 3
+    epochs = 12
     batch_size = 32
     eval_batch_size = 32
 
@@ -226,7 +226,12 @@ def reload_model_and_test():
     print(reloaded_result.numpy())
 
 
+import os
+
+
 def main():
+    # disable gpu as it gets OOM
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     train_model()
 
 

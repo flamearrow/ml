@@ -8,7 +8,7 @@ BUFFER_SIZE = 10000
 BATCH_SIZE = 64
 EMBEDDING_DIMENSION = 64
 tensorboard_path = 'logs/text_classification_lstm'
-model_path = 'models/text/text_classification_lstm'
+model_path = 'model/text/text_classification_lstm'
 
 
 # Model: "sequential"

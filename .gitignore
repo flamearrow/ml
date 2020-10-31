@@ -4,6 +4,10 @@ kerastoy/venv
 kerastoy/.idea
 kerastoy/logs
 kerastoy/models
+kerastoy/model
+kerastoy/text/models
+kerastoy/text/model
+kerastoy/text/logs
 kerastoy/unet
 kerastoy/tensorboard_logs
 kerastoy/checkpoints
